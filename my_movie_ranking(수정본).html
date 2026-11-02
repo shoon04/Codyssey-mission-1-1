@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>나만의 영화 랭킹</title>
+<style>
+:root{--ink:#242424;--muted:#777;--line:#e8e8e8;--soft:#f7f7f7;--accent:#222;--shadow:0 8px 24px rgba(0,0,0,.06)}
+*{box-sizing:border-box}
+body{margin:0;background:#fff;color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans KR",Arial,sans-serif;line-height:1.5}
+button,input,textarea{font:inherit}
+button{cursor:pointer}
+.app{max-width:1440px;margin:0 auto;padding:36px 28px 60px}
+header{display:flex;justify-content:space-between;align-items:flex-start;gap:20px;margin-bottom:26px}
+h1{font-size:clamp(27px,4vw,38px);letter-spacing:-1.5px;margin:0 0 7px;font-weight:800}
+.subtitle{color:var(--muted);font-size:14px;margin:0}
+.header-actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.btn{border:1px solid var(--line);background:#fff;color:#333;border-radius:10px;padding:9px 13px;font-size:13px;font-weight:650;transition:.15s}
+.btn:hover{background:#f6f6f6;border-color:#ccc}
+.btn.primary{background:#222;color:#fff;border-color:#222}
+.btn.primary:hover{background:#444}
+.btn.danger{color:#b33;border-color:#f0dada}
+.btn.small{padding:6px 9px;font-size:12px}
+.guide{display:flex;align-items:center;gap:9px;background:#fafafa;border:1px solid #eee;border-radius:12px;padding:12px 15px;margin-bottom:22px;font-size:13px;color:#666}
+.guide strong{color:#333}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.toolbar h2{font-size:17px;margin:0;letter-spacing:-.4px}
+.toolbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+.tier-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px;margin-bottom:18px}
+.tier{border:1px solid var(--line);border-radius:14px;min-height:190px;background:#fff;overflow:hidden;transition:border-color .15s,background .15s}
+.tier.drag-over{border:2px dashed #777;background:#fafafa}
+.tier-head{display:flex;align-items:center;justify-content:space-between;padding:13px 15px;border-bottom:1px solid var(--line)}
+.tier-name{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:800}
+.tier-letter{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;font-weight:850;font-size:15px}
+.tier[data-tier="S"] .tier-letter{background:#fff1d6;color:#9a6410}
+.tier[data-tier="A"] .tier-letter{background:#f0eaff;color:#6948a8}
+.tier[data-tier="B"] .tier-letter{background:#e8f2ff;color:#356ba9}
+.tier[data-tier="C"] .tier-letter{background:#eee;color:#666}
+.count{font-size:12px;color:#888;font-variant-numeric:tabular-nums}
+.cards{padding:11px;display:flex;flex-direction:column;gap:8px;min-height:137px}
+.movie{display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid #eaeaea;border-radius:9px;background:#fff;cursor:grab;user-select:none;touch-action:none;min-height:43px;transition:box-shadow .15s,border-color .15s,opacity .15s}
+.movie:hover{border-color:#cfcfcf;box-shadow:0 3px 10px rgba(0,0,0,.04)}
+.movie:active{cursor:grabbing}
+.movie.dragging{opacity:.35}
+.movie .grip{color:#bbb;font-size:14px;letter-spacing:-3px}
+.movie-title{font-size:13px;font-weight:650;flex:1;min-width:0;overflow-wrap:anywhere}
+.movie-tools{display:flex;gap:4px;opacity:.0;transition:opacity .15s}
+.movie:hover .movie-tools,.movie:focus-within .movie-tools{opacity:1}
+.icon-btn{border:0;background:transparent;color:#888;border-radius:6px;width:27px;height:27px;padding:0;font-size:14px}
+.icon-btn:hover{background:#f1f1f1;color:#222}
+.memo-dot{width:6px;height:6px;border-radius:50%;background:#777;display:inline-block;margin-left:5px;vertical-align:middle}
+.empty{color:#aaa;font-size:12px;text-align:center;padding:27px 8px}
+.unrated{border:1px solid var(--line);border-radius:14px;background:#fcfcfc;overflow:hidden}
+.unrated .tier-head{background:#fcfcfc}
+.unrated .tier-letter{background:#eee;color:#666}
+.unrated .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));min-height:80px}
+.stats{display:flex;gap:9px;flex-wrap:wrap;margin:20px 0 0}
+.stat{border:1px solid var(--line);border-radius:9px;padding:8px 12px;font-size:12px;color:#777}
+.stat strong{color:#222;margin-left:5px;font-size:14px}
+.status{font-size:12px;color:#888;min-height:20px;text-align:right;margin-top:8px}
+footer{margin-top:36px;padding-top:16px;border-top:1px solid #eee;color:#aaa;font-size:11px;text-align:center}
+.overlay{position:fixed;inset:0;background:rgba(20,20,20,.38);display:none;align-items:center;justify-content:center;padding:18px;z-index:20}
+.overlay.show{display:flex}
+.dialog{background:#fff;width:min(100%,480px);max-height:90vh;overflow:auto;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.2);padding:23px}
+.dialog h3{margin:0 0 8px;font-size:19px}
+.dialog p{margin:0 0 16px;color:#777;font-size:13px}
+.dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;flex-wrap:wrap}
+.field{display:block;width:100%;border:1px solid #ddd;border-radius:9px;padding:11px 12px;outline:none;margin:8px 0 12px;font-size:14px}
+.field:focus{border-color:#777}
+textarea.field{min-height:145px;resize:vertical}
+.help-list{padding-left:20px;margin:12px 0;color:#555;font-size:13px}
+.help-list li{margin:8px 0}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(20px);opacity:0;pointer-events:none;background:#222;color:#fff;border-radius:11px;padding:10px 14px;font-size:13px;box-shadow:var(--shadow);z-index:50;transition:.2s;display:flex;gap:13px;align-items:center;max-width:calc(100% - 24px)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto}
+.toast button{border:0;background:transparent;color:#fff;text-decoration:underline;font-weight:700;padding:2px}
+.file-input{display:none}
+.drag-placeholder{height:42px;border:2px dashed #bbb;border-radius:9px;background:#fafafa}
+@media(max-width:900px){.tier-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.app{padding:27px 20px 45px}}
+@media(max-width:560px){.app{padding:22px 13px 40px}header{display:block}.header-actions{justify-content:flex-start;margin-top:17px}.header-actions .btn{flex:1}.tier-grid{grid-template-columns:1fr;gap:10px}.tier{min-height:130px}.cards{min-height:75px}.unrated .cards{grid-template-columns:1fr}.toolbar{align-items:flex-start;flex-direction:column}.toolbar-actions{width:100%}.toolbar-actions .btn{flex:1}.movie-tools{opacity:1}.guide{align-items:flex-start}.dialog{padding:19px}}
+@media(hover:none){.movie-tools{opacity:1}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div>
+      <h1>나만의 영화 랭킹</h1>
+      <p class="subtitle">내가 본 영화를 나만의 기준으로 분류하고 기록해 보세요.</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn" id="helpBtn">사용법</button>
+      <button class="btn" id="exportJsonBtn">JSON 백업</button>
+      <button class="btn" id="importJsonBtn">JSON 불러오기</button>
+      <button class="btn primary" id="exportPngBtn">PNG 이미지 저장</button>
+      <input class="file-input" type="file" id="jsonFile" accept=".json,application/json">
+    </div>
+  </header>
+
+  <div class="guide"><span>✦</span><span><strong>사용 안내</strong> 영화를 마우스나 손가락으로 끌어 원하는 등급에 놓으세요. 카드 안의 메모 아이콘으로 감상평을 기록할 수 있습니다.</span></div>
+
+  <div class="toolbar">
+    <h2>나의 영화 티어표</h2>
+    <div class="toolbar-actions">
+      <button class="btn" id="addBtn">＋ 영화 추가</button>
+      <button class="btn danger" id="resetBtn">전체 초기화</button>
+    </div>
+  </div>
+
+  <section class="tier-grid" id="tierGrid">
+    <div class="tier" data-tier="S"><div class="tier-head"><div class="tier-name"><span class="tier-letter">S</span> 인생 영화</div><span class="count" id="count-S">0편</span></div><div class="cards" data-list="S"></div></div>
+    <div class="tier" data-tier="A"><div class="tier-head"><div class="tier-name"><span class="tier-letter">A</span> 매우 좋았던 영화</div><span class="count" id="count-A">0편</span></div><div class="cards" data-list="A"></div></div>
+    <div class="tier" data-tier="B"><div class="tier-head"><div class="tier-name"><span class="tier-letter">B</span> 괜찮았던 영화</div><span class="count" id="count-B">0편</span></div><div class="cards" data-list="B"></div></div>
+    <div class="tier" data-tier="C"><div class="tier-head"><div class="tier-name"><span class="tier-letter">C</span> 아쉬웠던 영화</div><span class="count" id="count-C">0편</span></div><div class="cards" data-list="C"></div></div>
+  </section>
+
+  <section class="unrated" data-tier="unrated">
+    <div class="tier-head"><div class="tier-name"><span class="tier-letter">—</span> 미분류</div><span class="count" id="count-unrated">0편</span></div>
+    <div class="cards" data-list="unrated"></div>
+  </section>
+  <div class="stats" id="stats"></div>
+  <div class="status" id="saveStatus" aria-live="polite">자동 저장이 켜져 있습니다.</div>
+  <footer>이 데이터는 현재 브라우저에 저장됩니다. 중요한 내용은 JSON 파일로 백업해 주세요.</footer>
+</div>
+
+<div class="overlay" id="modalOverlay" role="dialog" aria-modal="true">
+  <div class="dialog" id="dialog"></div>
+</div>
+<div class="toast" id="toast"><span id="toastText"></span><button id="undoBtn" hidden>되돌리기</button><button id="toastClose" aria-label="닫기">닫기</button></div>
+
+<script>
+(() => {
+'use strict';
+const STORAGE_KEY = 'myMovieRanking.v1';
+const INITIAL = ['기생충','인터스텔라','라라랜드','센과 치히로의 행방불명','어벤져스: 엔드게임','범죄도시','타이타닉','토이 스토리'];
+const TIERS = ['S','A','B','C','unrated'];
+const LABELS = {S:'S등급',A:'A등급',B:'B등급',C:'C등급',unrated:'미분류'};
+let state = {movies:[]};
+let undoState = null;
+let toastTimer = null;
+let pointerDrag = null;
+const $ = id => document.getElementById(id);
+const overlay = $('modalOverlay'), dialog = $('dialog');
+
+function uid(){ return 'm'+Date.now().toString(36)+Math.random().toString(36).slice(2,8); }
+function freshState(){ return {movies:INITIAL.map(title=>({id:uid(),title,tier:'unrated',memo:''}))}; }
+function clone(v){ return JSON.parse(JSON.stringify(v)); }
+function normalizeTitle(s){ return String(s||'').trim().replace(/\s+/g,' ').toLocaleLowerCase('ko-KR'); }
+function validState(data){
+  if(!data || !Array.isArray(data.movies)) return false;
+  const ids=new Set(), titles=new Set();
+  for(const m of data.movies){
+    if(!m || typeof m.title!=='string' || !m.title.trim() || !TIERS.includes(m.tier) || typeof m.memo!=='string') return false;
+    if(typeof m.id!=='string' || !m.id || ids.has(m.id)) return false;
+    const t=normalizeTitle(m.title); if(titles.has(t)) return false;
+    ids.add(m.id); titles.add(t);
+  }
+  return true;
+}
+function save(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(state));$('saveStatus').textContent='저장됨 · '+new Date().toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});}
+  catch(e){$('saveStatus').textContent='저장하지 못했습니다. JSON 백업을 권장합니다.';showToast('브라우저 저장 공간이 부족하거나 저장이 차단되었습니다.');}
+}
+function load(){
+  try{const raw=localStorage.getItem(STORAGE_KEY);if(raw){const parsed=JSON.parse(raw);if(validState(parsed))return parsed;}}
+  catch(e){}
+  return freshState();
+}
+function snapshot(){undoState=clone(state);}
+function commit(){render();save();}
+function showToast(message,canUndo=false){
+  $('toastText').textContent=message;$('undoBtn').hidden=!canUndo;
+  const t=$('toast');t.classList.add('show');clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),canUndo?6500:3000);
+}
+function closeModal(){overlay.classList.remove('show');dialog.innerHTML='';}
+function openModal(html,after){dialog.innerHTML=html;overlay.classList.add('show');if(after)after();}
+function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function render(){
+  for(const tier of TIERS){
+    const list=document.querySelector('[data-list="'+tier+'"]');
+    list.innerHTML='';
+    const movies=state.movies.filter(m=>m.tier===tier);
+    $('count-'+tier).textContent=movies.length+'편';
+    if(!movies.length){list.innerHTML='<div class="empty">영화를 여기로 끌어오세요</div>';continue;}
+    movies.forEach(m=>{
+      const card=document.createElement('div');card.className='movie';card.draggable=true;card.dataset.id=m.id;card.tabIndex=0;
+      card.innerHTML='<span class="grip" aria-hidden="true">⠿</span><span class="movie-title">'+esc(m.title)+(m.memo?'<span class="memo-dot" title="메모 있음"></span>':'')+'</span><span class="movie-tools"><button class="icon-btn memo-btn" title="메모" aria-label="메모">✎</button><button class="icon-btn edit-btn" title="제목 수정" aria-label="제목 수정">⋯</button><button class="icon-btn delete-btn" title="삭제" aria-label="삭제">×</button></span>';
+      card.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',m.id);e.dataTransfer.effectAllowed='move';card.classList.add('dragging');});
+      card.addEventListener('dragend',()=>card.classList.remove('dragging'));
+      card.addEventListener('pointerdown',pointerDown);
+      card.querySelector('.memo-btn').addEventListener('click',e=>{e.stopPropagation();editMemo(m.id);});
+      card.querySelector('.edit-btn').addEventListener('click',e=>{e.stopPropagation();editTitle(m.id);});
+      card.querySelector('.delete-btn').addEventListener('click',e=>{e.stopPropagation();deleteMovie(m.id);});
+      list.appendChild(card);
+    });
+  }
+  document.querySelectorAll('[data-list]').forEach(list=>{
+    list.ondragover=e=>{e.preventDefault();list.closest('.tier,.unrated').classList.add('drag-over');};
+    list.ondragleave=e=>{if(!list.contains(e.relatedTarget))list.closest('.tier,.unrated').classList.remove('drag-over');};
+    list.ondrop=e=>{e.preventDefault();list.closest('.tier,.unrated').classList.remove('drag-over');const id=e.dataTransfer.getData('text/plain');const target=e.target.closest('.movie');moveMovie(id,list.dataset.list,target?target.dataset.id:null);};
+  });
+  const total=state.movies.length;
+  $('stats').innerHTML=TIERS.map(t=>'<div class="stat">'+LABELS[t]+' <strong>'+state.movies.filter(m=>m.tier===t).length+'편</strong></div>').join('')+'<div class="stat">전체 영화 <strong>'+total+'편</strong></div>';
+}
+function moveMovie(id,tier,targetId){
+  if(!TIERS.includes(tier))return;
+  const movie=state.movies.find(m=>m.id===id);if(!movie)return;
+  const oldTier=movie.tier;
+  const oldList=state.movies.filter(m=>m.tier===oldTier);
+  const oldIndex=oldList.findIndex(m=>m.id===id);
+  const newList=state.movies.filter(m=>m.tier===tier&&m.id!==id);
+  let index=targetId?newList.findIndex(m=>m.id===targetId):newList.length;
+  if(index<0)index=newList.length;
+  if(oldTier===tier && oldIndex===index)return;
+  snapshot();
+  movie.tier=tier;
+  const ordered=newList.slice();ordered.splice(index,0,movie);
+  const others=state.movies.filter(m=>m.tier!==tier);
+  // Rebuild ordering within each tier using a stable tier-group sequence.
+  const tierOrder=TIERS.map(t=>t===tier?ordered:state.movies.filter(m=>m.tier===t));
+  state.movies=tierOrder.flat();
+  commit();
+}
+function pointerDown(e){
+  if(e.pointerType==='mouse')return; // Native drag is used for mouse; pointer path supports touch.
+  if(e.target.closest('button'))return;
+  const card=e.currentTarget;
+  pointerDrag={id:card.dataset.id,card,startX:e.clientX,startY:e.clientY,active:false};
+  card.setPointerCapture?.(e.pointerId);
+  card.addEventListener('pointermove',pointerMove);
+  card.addEventListener('pointerup',pointerUp,{once:true});
+  card.addEventListener('pointercancel',pointerCancel,{once:true});
+}
+function pointerMove(e){
+  if(!pointerDrag)return;
+  const d=pointerDrag;
+  if(!d.active && Math.hypot(e.clientX-d.startX,e.clientY-d.startY)>9){d.active=true;d.card.classList.add('dragging');}
+  if(!d.active)return;
+  e.preventDefault();
+  document.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));
+  const el=document.elementFromPoint(e.clientX,e.clientY);
+  const list=el?.closest('[data-list]');
+  if(list){list.closest('.tier,.unrated').classList.add('drag-over');}
+}
+function pointerUp(e){
+  const d=pointerDrag;if(!d)return;
+  d.card.removeEventListener('pointermove',pointerMove);d.card.classList.remove('dragging');
+  if(d.active){
+    const el=document.elementFromPoint(e.clientX,e.clientY);
+    const list=el?.closest('[data-list]');
+    if(list){const target=el.closest('.movie');moveMovie(d.id,list.dataset.list,target&&target.dataset.id!==d.id?target.dataset.id:null);}
+  }
+  document.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));pointerDrag=null;
+}
+function pointerCancel(){if(pointerDrag){pointerDrag.card.classList.remove('dragging');pointerDrag.card.removeEventListener('pointermove',pointerMove);}pointerDrag=null;document.querySelectorAll('.drag-over').forEach(x=>x.classList.remove('drag-over'));}
+function addMovie(){
+  openModal('<h3>영화 추가</h3><p>추가할 영화 제목을 입력하세요. 새 영화는 미분류 영역의 맨 뒤에 배치됩니다.</p><input class="field" id="movieInput" maxlength="100" placeholder="영화 제목"><div class="dialog-actions"><button class="btn" id="cancel">취소</button><button class="btn primary" id="ok">추가하기</button></div>',()=>{
+    $('cancel').onclick=closeModal;$('ok').onclick=()=>{
+      const title=$('movieInput').value.trim().replace(/\s+/g,' ');
+      if(!title){showToast('영화 제목을 입력해 주세요.');return;}
+      if(state.movies.some(m=>normalizeTitle(m.title)===normalizeTitle(title))){showToast('이미 등록된 영화입니다.');return;}
+      snapshot();state.movies.push({id:uid(),title,tier:'unrated',memo:''});closeModal();commit();showToast('영화를 추가했습니다.',true);
+    };$('movieInput').focus();$('movieInput').addEventListener('keydown',e=>{if(e.key==='Enter')$('ok').click();});
+  });
+}
+function editTitle(id){
+  const m=state.movies.find(x=>x.id===id);if(!m)return;
+  openModal('<h3>영화 제목 수정</h3><p>수정해도 기존 등급, 순서, 메모는 유지됩니다.</p><input class="field" id="movieInput" maxlength="100" value="'+esc(m.title)+'"><div class="dialog-actions"><button class="btn" id="cancel">취소</button><button class="btn primary" id="ok">저장</button></div>',()=>{
+    $('cancel').onclick=closeModal;$('ok').onclick=()=>{
+      const title=$('movieInput').value.trim().replace(/\s+/g,' ');
+      if(!title){showToast('영화 제목을 입력해 주세요.');return;}
+      if(state.movies.some(x=>x.id!==id&&normalizeTitle(x.title)===normalizeTitle(title))){showToast('이미 등록된 영화 제목입니다.');return;}
+      snapshot();m.title=title;closeModal();commit();showToast('영화 제목을 수정했습니다.',true);
+    };$('movieInput').focus();$('movieInput').select();
+  });
+}
+function editMemo(id){
+  const m=state.movies.find(x=>x.id===id);if(!m)return;
+  openModal('<h3>감상 메모</h3><p><strong>'+esc(m.title)+'</strong>에 대한 감상을 기록하세요.</p><textarea class="field" id="memoInput" maxlength="5000" placeholder="이 영화를 어떻게 감상했나요?">'+esc(m.memo)+'</textarea><div class="dialog-actions"><button class="btn" id="cancel">취소</button><button class="btn" id="clear">메모 삭제</button><button class="btn primary" id="ok">저장</button></div>',()=>{
+    $('cancel').onclick=closeModal;$('clear').onclick=()=>{if(!m.memo){closeModal();return;}if(confirm('이 영화의 메모를 삭제할까요?')){snapshot();m.memo='';closeModal();commit();showToast('메모를 삭제했습니다.',true);}};
+    $('ok').onclick=()=>{snapshot();m.memo=$('memoInput').value;closeModal();commit();showToast('메모를 저장했습니다.',true);};
+    $('memoInput').focus();
+  });
+}
+function deleteMovie(id){
+  const m=state.movies.find(x=>x.id===id);if(!m)return;
+  if(!confirm('「'+m.title+'」 영화를 삭제할까요? 삭제 후 되돌릴 수 있습니다.'))return;
+  snapshot();state.movies=state.movies.filter(x=>x.id!==id);commit();showToast('영화를 삭제했습니다.',true);
+}
+function resetAll(){
+  if(!confirm('모든 영화를 미분류 영역으로 이동할까요?\n영화 목록과 메모는 유지됩니다.'))return;
+  snapshot();state.movies.forEach(m=>m.tier='unrated');commit();showToast('모든 영화를 미분류 영역으로 되돌렸습니다.',true);
+}
+function undo(){
+  if(!undoState)return;
+  state=clone(undoState);undoState=null;commit();showToast('이전 상태로 되돌렸습니다.');
+}
+function help(){
+  openModal('<h3>사용 방법</h3><p>나만의 영화 랭킹을 관리하는 방법입니다.</p><ol class="help-list"><li><strong>영화 이동:</strong> PC에서는 카드를 마우스로 끌고, 모바일에서는 손가락으로 끌어 원하는 영역에 놓으세요.</li><li><strong>순서 변경:</strong> 같은 영역 안에서 카드를 끌어 놓으면 순서를 바꿀 수 있습니다.</li><li><strong>영화 추가:</strong> 상단의 영화 추가 버튼을 눌러 제목을 입력하세요.</li><li><strong>제목 수정·삭제:</strong> 카드 오른쪽의 ⋯ 또는 × 버튼을 사용하세요.</li><li><strong>감상 메모:</strong> 카드의 연필 아이콘을 눌러 메모를 작성하거나 수정하세요.</li><li><strong>자동 저장:</strong> 변경 사항은 현재 브라우저에 자동 저장됩니다.</li><li><strong>백업:</strong> JSON 백업으로 데이터를 파일에 보관하고, JSON 불러오기로 복원하거나 합칠 수 있습니다.</li><li><strong>이미지 저장:</strong> PNG 이미지 저장 버튼으로 현재 티어표를 이미지로 내보낼 수 있습니다.</li></ol><p>브라우저 데이터가 삭제될 수 있으니 중요한 티어표는 JSON으로 백업해 주세요.</p><div class="dialog-actions"><button class="btn primary" id="closeHelp">확인</button></div>',()=>$('closeHelp').onclick=closeModal);
+}
+function exportJSON(){
+  const blob=new Blob([JSON.stringify({app:'나만의 영화 랭킹',version:1,exportedAt:new Date().toISOString(),movies:state.movies},null,2)],{type:'application/json'});
+  downloadBlob(blob,'나만의_영화_랭킹_백업.json');showToast('JSON 백업 파일을 저장했습니다.');
+}
+function downloadBlob(blob,name){
+  const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+function importJSON(){
+  $('jsonFile').value='';$('jsonFile').click();
+}
+$('jsonFile').addEventListener('change',async e=>{
+  const file=e.target.files[0];if(!file)return;
+  try{
+    const data=JSON.parse(await file.text());
+    if(!validState(data)){showToast('백업 파일 형식이 올바르지 않거나 중복 영화가 포함되어 있습니다.');return;}
+    openModal('<h3>백업 불러오기</h3><p>어떤 방식으로 데이터를 불러올까요?</p><div style="display:grid;gap:9px"><button class="btn" id="replace">전체 교체 · 현재 데이터를 백업 내용으로 바꾸기</button><button class="btn" id="merge">합치기 · 기존 영화는 유지하고 새 영화만 추가</button></div><div class="dialog-actions"><button class="btn" id="cancel">취소</button></div>',()=>{
+      $('cancel').onclick=closeModal;
+      $('replace').onclick=()=>{
+        if(!confirm('현재 영화 목록과 메모를 백업 파일의 내용으로 교체할까요?'))return;
+        snapshot();state={movies:data.movies.map(m=>({...m}))};closeModal();commit();showToast('백업 데이터를 전체 교체했습니다.',true);
+      };
+      $('merge').onclick=()=>{
+        if(!confirm('백업 파일의 영화를 현재 목록에 합칠까요? 같은 제목은 기존 항목을 유지합니다.'))return;
+        const known=new Set(state.movies.map(m=>normalizeTitle(m.title)));let added=0;
+        snapshot();
+        for(const m of data.movies){const key=normalizeTitle(m.title);if(!known.has(key)){state.movies.push({...m,id:uid()});known.add(key);added++;}}
+        closeModal();commit();showToast(added+'편을 추가했습니다. 중복 영화는 기존 항목을 유지했습니다.',true);
+      };
+    });
+  }catch(err){showToast('JSON 파일을 읽을 수 없습니다. 파일 내용을 확인해 주세요.');}
+});
+function exportPNG(){
+  const width=1600,pad=64,gap=20,colW=(width-pad*2-gap*3)/4;
+  const tiers=[{key:'S',name:'S · 인생 영화'},{key:'A',name:'A · 매우 좋았던 영화'},{key:'B',name:'B · 괜찮았던 영화'},{key:'C',name:'C · 아쉬웠던 영화'},{key:'unrated',name:'미분류'}];
+  const lineH=54,headH=76,sectionGap=28;
+  const tierHeights=tiers.map(t=>Math.max(150,headH+state.movies.filter(m=>m.tier===t.key).length*lineH+28));
+  const top=170,gridH=Math.max(...tierHeights.slice(0,4)),unratedH=tierHeights[4];
+  const height=top+gridH+sectionGap+unratedH+90;
+  const canvas=document.createElement('canvas');canvas.width=width*2;canvas.height=height*2;
+  const ctx=canvas.getContext('2d');ctx.scale(2,2);ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);
+  ctx.fillStyle='#222';ctx.font='800 42px sans-serif';ctx.fillText('나만의 영화 랭킹',pad,76);
+  ctx.fillStyle='#888';ctx.font='18px sans-serif';ctx.fillText('나의 영화 티어표 · 총 '+state.movies.length+'편',pad,112);
+  const colors={S:'#fff1d6',A:'#f0eaff',B:'#e8f2ff',C:'#eee',unrated:'#eee'};
+  tiers.slice(0,4).forEach((t,i)=>{
+    const x=pad+i*(colW+gap),y=top;
+    ctx.strokeStyle='#e8e8e8';ctx.lineWidth=1;roundRect(ctx,x,y,colW,gridH,14,true,true);
+    ctx.fillStyle=colors[t.key];roundRect(ctx,x+16,y+16,42,42,10,true,false);
+    ctx.fillStyle='#333';ctx.font='800 20px sans-serif';ctx.fillText(t.key,x+29,y+44);
+    ctx.fillStyle='#333';ctx.font='700 19px sans-serif';ctx.fillText(t.name.slice(4),x+70,y+43);
+    ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText(state.movies.filter(m=>m.tier===t.key).length+'편',x+colW-48,y+43);
+    let yy=y+88;
+    state.movies.filter(m=>m.tier===t.key).forEach(m=>{ctx.fillStyle='#fafafa';roundRect(ctx,x+14,yy,colW-28,42,8,true,false);ctx.fillStyle='#333';ctx.font='16px sans-serif';ctx.fillText(fitText(ctx,m.title,colW-54),x+27,yy+27);yy+=lineH;});
+    if(!state.movies.some(m=>m.tier===t.key)){ctx.fillStyle='#aaa';ctx.font='14px sans-serif';ctx.fillText('등록된 영화 없음',x+18,y+112);}
+  });
+  const uy=top+gridH+sectionGap;ctx.strokeStyle='#e8e8e8';roundRect(ctx,pad,uy,width-pad*2,unratedH,14,true,true);
+  ctx.fillStyle='#333';ctx.font='700 21px sans-serif';ctx.fillText('미분류',pad+20,uy+42);
+  ctx.fillStyle='#888';ctx.font='14px sans-serif';ctx.fillText(state.movies.filter(m=>m.tier==='unrated').length+'편',width-pad-65,uy+42);
+  let ux=pad+20,uyLine=uy+65;const maxX=width-pad-20;
+  state.movies.filter(m=>m.tier==='unrated').forEach(m=>{const text=fitText(ctx,m.title,220);ctx.font='15px sans-serif';const w=Math.min(260,ctx.measureText(text).width+30);if(ux+w>maxX){ux=pad+20;uyLine+=48;}ctx.fillStyle='#fafafa';roundRect(ctx,ux,uyLine,w,36,7,true,false);ctx.fillStyle='#333';ctx.fillText(text,ux+13,uyLine+23);ux+=w+9;});
+  ctx.fillStyle='#aaa';ctx.font='12px sans-serif';ctx.fillText('나만의 영화 랭킹',pad,height-25);
+  canvas.toBlob(blob=>{if(blob){downloadBlob(blob,'나만의_영화_랭킹.png');showToast('PNG 이미지 파일을 저장했습니다.');}else showToast('이미지를 저장하지 못했습니다.');},'image/png');
+}
+function fitText(ctx,text,max){let s=text;while(ctx.measureText(s).width>max&&s.length>2)s=s.slice(0,-2)+'…';return s;}
+function roundRect(ctx,x,y,w,h,r,fill,stroke){ctx.beginPath();ctx.roundRect(x,y,w,h,r);if(fill){ctx.fillStyle='#fff';ctx.fill();}if(stroke)ctx.stroke();}
+$('addBtn').onclick=addMovie;$('resetBtn').onclick=resetAll;$('helpBtn').onclick=help;$('exportJsonBtn').onclick=exportJSON;$('importJsonBtn').onclick=importJSON;$('exportPngBtn').onclick=exportPNG;
+$('undoBtn').onclick=undo;$('toastClose').onclick=()=>$('toast').classList.remove('show');
+overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('show'))closeModal();});
+state=load();render();save();
+if(!localStorage.getItem('myMovieRanking.helpSeen')){help();localStorage.setItem('myMovieRanking.helpSeen','1');}
+})();
+</script>
+</body>
+</html>
